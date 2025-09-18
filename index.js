@@ -28,6 +28,44 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const eventDatabase = client.db("runway-marathon");
+    const eventCollection = eventDatabase.collection("marathon-event");
+    const today = new Date();
+    // featured event api
+    app.get("/featuredEvent", async (req, res) => {
+      const cursor = eventCollection.find({ isFeatured: true });
+      const result = await cursor.limit(6).toArray();
+      res.send(result);
+    });
+    // upcomming event api
+    app.get("/upCommingEvent", async (req, res) => {
+      const cursor = eventCollection.find({
+        registrationStart: { $gte: today.toISOString().split("T")[0] }, // future registration dates
+      });
+      const result = await cursor
+        .sort({ registrationStart: 1 })
+        .limit(3)
+        .toArray();
+      res.send(result);
+    });
+    // already registation start event api
+    app.get("/openEvent", async (req, res) => {
+      const cursor = eventCollection.find({
+        registrationStart: { $lte: today.toISOString().split("T")[0] },
+        registrationDeadline: { $gte: today.toISOString().split("T")[0] },
+      });
+      const result = await cursor.sort({ registrationStart: 1 }).toArray();
+      res.send(result);
+    });
+
+    // all marathon event
+    app.get("/allEvent", async (req, res) => {
+      const cursor = eventCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
